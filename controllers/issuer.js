@@ -102,11 +102,12 @@ exports.generateScript = function (req, res) {
 
 exports.frame = function (req, res) {
   res.header('Cache-Control', 'no-cache, must-revalidate');
+
   res.render('badge-accept.html', {
     layout: null,
     framed: true,
-    csrfToken: req.session._csrf,
-    email: req.session.emails && req.session.emails[0]
+    csrfToken: req.csrfToken(),
+    email: (req.user ? req.user.attributes.email : null)
   });
 };
 
@@ -129,8 +130,8 @@ exports.frameless = function (req, res) {
     layout: null,
     framed: false,
     assertions: JSON.stringify(assertions),
-    csrfToken: req.session._csrf,
-    email: req.session.emails && req.session.emails[0]
+    csrfToken: req.csrfToken(),
+    email: (req.user ? req.user.attributes.email : null)
   });
 };
 
@@ -157,7 +158,7 @@ exports.issuerBadgeAddFromAssertion = function (req, res, next) {
     redirect_to: '/backpack/login'
   });
 
-  const input = req.query.assertion || req.body.assertion || req.body.badge;
+  const input = req.query.assertion || req.body.assertion || req.body.badge || req.query.badge;
   const assertionIsSignature = validator.isSignedBadge(input);
   const assertionIsUrl = validUrl(input);
 
@@ -191,12 +192,22 @@ exports.issuerBadgeAddFromAssertion = function (req, res, next) {
       return res.json(400, err);
     }
 
-    const assertion = normalizeAssertion(data);
-    const recipient = user.get('email');
-    const userOwnsBadge = Badge.confirmRecipient(assertion, recipient);
+    const assertion = normalizeAssertion(data.info);
+
+    var recipientEmails = [user.get('email')];
+
+    if (user.attributes.additional_email_1 && user.attributes.additional_email_1_is_verified) {
+      recipientEmails.push(user.attributes.additional_email_1);
+    }
+
+    if (user.attributes.additional_email_2 && user.attributes.additional_email_2_is_verified) {
+      recipientEmails.push(user.attributes.additional_email_2);
+    }
+
+    const userOwnsBadge = Badge.confirmRecipient(assertion, recipientEmails);
     const origin = assertion.badge.issuer.origin;
 
-    if (req.method == 'POST' &&  !userOwnsBadge) {
+    if (req.method == 'POST' && !userOwnsBadge) {
       return res.json(403, {
         message: "badge assertion is for a different user"
       });
@@ -210,11 +221,13 @@ exports.issuerBadgeAddFromAssertion = function (req, res, next) {
 
     // awarding the badge, only done if this is a POST
     if (req.method == 'POST') {
-      const imagedata = data.resources['badge.image'];
+      const imagedata = data.info.resources['badge.image'];
       const opts = {
+        original: data.assertion,
         assertion: assertion,
         imagedata: imagedata,
-        recipient: recipient,
+        recipient: user.get('email'),
+        awardedTo: userOwnsBadge,
         url: assertionIsUrl ? input : null,
         signature: assertionIsSignature ? input: null,
       };
@@ -226,7 +239,7 @@ exports.issuerBadgeAddFromAssertion = function (req, res, next) {
           // error message
           const dupeRegex = /Duplicate entry/;
           if (dupeRegex.test(err)) {
-            return res.json(304, {
+            return res.status(304).json({
               badge: assertion,
               exists: true,
               message: "badge already exists"
@@ -258,7 +271,7 @@ exports.issuerBadgeAddFromAssertion = function (req, res, next) {
     const response = {
       exists: false,
       badge: assertion,
-      recipient: recipient
+      recipient: userOwnsBadge
     };
     const conditions = {};
     if (assertionIsUrl)
@@ -274,7 +287,7 @@ exports.issuerBadgeAddFromAssertion = function (req, res, next) {
       if (badge && badge.get("user_id") == req.user.get("id"))
         response.exists = true;
 
-      if (Badge.confirmRecipient(assertion, req.user.get('email')))
+      if (Badge.confirmRecipient(assertion, recipientEmails))
         response.owner = true;
 
       return res.json(200, response);

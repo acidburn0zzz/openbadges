@@ -5,6 +5,7 @@ var User = require('../models/user.js');
 var conf = require('../lib/configuration');
 const logger = require('../lib/logger');
 var utils = require('../lib/utils');
+const async = require('async');
 
 // Helpers
 // -------
@@ -131,6 +132,7 @@ exports.emailToUserId = function emailToUserId(req, res, next) {
   // don't use formatter here -- we aren't supporting jsonp or CORS for
   // the email to userId API because we want to discourage people including
   // email addresses in cleartext (such as in the source of some javascript)
+  
   var obj = req.body || {};
   var email = obj['email'];
 
@@ -140,28 +142,86 @@ exports.emailToUserId = function emailToUserId(req, res, next) {
       error: 'missing `email` parameter'
     });
 
-  User.findOne({ email: email }, function (err, user) {
-    if (err) {
-      logger.debug(err, 'displayer#emailToUserId: there was an error getting the user %s', email);
-      return res.send(400, {
-        status: 'error',
-        error: 'error trying to pull user `' + email + '` from database'
-      });
-    }
+  async.waterfall([
+    function(done) {
 
-    if (!user) {
-      return res.send(404, {
-        status: 'missing',
-        error: 'Could not find a user by the email address `' + email + '`'
-      });
-    }
+      User.findOne({ email: email }, function (err, user) {
+        if (err) {
+          logger.debug(err, 'displayer#emailToUserId: there was an error getting the user %s', email);
+          return res.send(400, {
+            status: 'error',
+            error: 'error trying to pull user `' + email + '` from database'
+          });
+        }
 
-    return res.send(200, {
-      status: 'okay',
-      email: email,
-      userId: user.get('id')
+        if (user) {
+          return res.send(200, {
+            status: 'okay',
+            email: email,
+            userId: user.get('id')
+          });
+        }
+
+        done();
+        
+      });
+
+    },
+    function(done) {
+
+      User.findOne({ additional_email_1: email, additional_email_1_is_verified: true }, function (err, user) {
+        if (err) {
+          logger.debug(err, 'displayer#emailToUserId: there was an error getting the user %s', email);
+          return res.send(400, {
+            status: 'error',
+            error: 'error trying to pull user `' + email + '` from database'
+          });
+        }
+
+        if (user) {
+          return res.send(200, {
+            status: 'okay',
+            email: email,
+            userId: user.get('id')
+          });
+        }
+
+        done();
+        
+      });
+
+    },
+    function(done) {
+
+      User.findOne({ additional_email_2: email, additional_email_2_is_verified: true }, function (err, user) {
+        if (err) {
+          logger.debug(err, 'displayer#emailToUserId: there was an error getting the user %s', email);
+          return res.send(400, {
+            status: 'error',
+            error: 'error trying to pull user `' + email + '` from database'
+          });
+        }
+
+        if (user) {
+          return res.send(200, {
+            status: 'okay',
+            email: email,
+            userId: user.get('id')
+          });
+        }
+
+        if (!user) {
+          return res.send(404, {
+            status: 'missing',
+            error: 'Could not find a user by the email address `' + email + '`'
+          });
+        }
+        
+      });
+      
+    }], function(err) {
+      response.redirect('/displayer/convert/email');
     });
-  });
 };
 
 

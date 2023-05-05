@@ -1,105 +1,41 @@
-# Mozilla Open Badges
-[![Build Status](https://secure.travis-ci.org/mozilla/openbadges.png?branch=development)](http://travis-ci.org/mozilla/openbadges)
+**We are retiring the Mozilla Backpack and transitioning to Badgr Backpack. More information at https://backpack.openbadges.org.badgr.io/**
 
-## Overview
-We intend to provide an open set of specifications, tools and services for
-generating verifiable badges that users can take with them wherever they go
-and use however they like.
+# Open Badges Backpack-ng (Next Generation)
+[![Build Status](https://travis-ci.org/mozilla/openbadges-backpack.png?branch=master)](https://travis-ci.org/mozilla/openbadges-backpack)
+[![Dependencies](https://david-dm.org/mozilla/openbadges-backpack.svg)](https://david-dm.org/mozilla/openbadges-backpack)
 
-The latest open standard we released can be found in the latest [assertion specification][assertions-latest].
-The assertion includes the open standard, the metadata specification, we defined. 
+## Welcome to the future of the Backpack
 
-For more information, check out http://openbadges.org
+Backpack-ng (pronounced *'backpacking'*) is the next generation of the Backpack.  
 
-## I'm an Issuer, how do I use this?
+Our team has been slugging away behind the scenes to ensure the Backpack stays relevant, maintained and loved.  
 
-Requirements:
+The [ng branch](https://github.com/mozilla/openbadges-backpack/tree/backpack-ng) is currently where all the heavy development has been taking place. It's where the following changes have been introduced:
 
-* Webserver capable of serving requests to the general internet.
-* Ability to make a POST request from your server backend and read a JSON response.
-* Email addresses of the users you wish to issue badges.
-* Badge image must be in PNG format.
+* Updated the framework and most of the dependencies
+* Removed Persona as the main authentication mechanism (which is due to be decommissioned on the 31st Nov 2016)
+* Replaced Persona with [PassportJS](http://passportjs.org/) (which includes a Persona strategy/plugin to allow users to login with Persona until it is finally decommissioned).
+* Added a new responsive theme
 
-Usage example:
+Although we've given the backpack a bit of a facelift, there are still some rough edges to smooth out. The front-end functionality is working as expected (that is, to say, we haven't spotted anything that is majorly broken!).  We're currently focusing our attention on the few remaining unit tests that are still failing (these mostly relate to the Backpack API).
 
-1. Generate an assertion (see below) for the user recieving the badge.
-2. Store that assertion at a public-but-secret URL and serve it with
-`content-type: application/json`
-  
-  * The assertion contains private information about a user, so you want a
-    non-predictable URL scheme to prevent automated scraping.
-  
-  * This URL should be stable - any badge issued from it relies on its
-    existence for verification.
-  
-  * Both of these problems will be solved in the near-term future by
-    supporting signed assertions, so you'll only need to expose a URL
-    containing your public key.
+## Call to action!
 
-3. Make a POST request to the open badge creator with the assertion URL. If
-validation passes, you will receive an HTTP 200 with `content-type: image/png`,
-the body being a your `badge.image` with the assertion URL baked into it.
-4. Send/give the image to the user (for example, email it).
+If you feel you have something to offer and would like to help develop/design the backpack and push things forward, please feel free to grab the codebase and start hacking.  Full setup instructions are below.
 
-### The Issuer Javascript API
+We welcome active collaborators, whether you want to discuss contributions to the code base or explore future developments, connect with us at backpack@digitalme.co.uk
 
-We have an easy to use API built for Issuers to easily push badges into Users Backpacks, giving the User the ability to approve the push through a lightboxed modal.  The API is written in Javascript, and is includable in your project with just a few lines of JS. Full documentation is [available here](docs/apis/issuer_api.md).
+## What is the Backpack?
 
-## Details
+The Mozilla Backpack is a placed to store your collections of Open Badges. The Backpack allows earners to import badges and manage them in groups, choosing whether each group is public or not. You can access the Mozilla Backpack Web front-end at: http://backpack.openbadges.org
 
-Please [see the documentation on Assertions][assertions-latest] to
-learn how to format your assertions, and [see the documentation on Badge Baking][baking-latest] to
-learn more about how to use the baking API and what kind of responses to
-expect in case of error.
+The Backpack code includes tools for badge issuers and displayers, for pushing awarded badges to an earner's Mozilla Backpack and for retrieving an earner's badges for display.  If you're an issuer or displayer, you will find more information on how to start interacting with the Backpack at the bottom of this guide.
+
+---
 
 ## I want to play with the code, where do I start?
 
-### The easy way[*](#a-warning)
-
-[Use Vagrant](http://vagrantup.com/v1/docs/getting-started/index.html). `vagrant up` in the project root will spin
-up a fully provisioned VM (it'll take about two or three minutes, longer if
-you don't have a `lucid32` box), `vagrant ssh` to get into the VM, then
-`start-server` will start up the server at
-[http://localhost:8888](http://localhost:8888). The server will also watch for
-changes, so you don't have to manually reload it.
-
-#### For Windows users
-
-[Install Vagrant](http://vagrantup.com/v1/docs/getting-started/index.html) and [VirtualBox](https://www.virtualbox.org/). Vagrant will try to install in C:\vagrant, which is a protected location in Windows. Instead, tell it to install in C:\Program Files (if you're on 32 bit windows) or C:\Program Files (x86) (if you're on 64 bit windows) instead - don't worry, this will actually create a C:\Program Files\vagrant folder.
-
-Ensure that your PATH variable contains the VirtualBox binaries folder: Go to your Control Panel -> System -> Advanced system settings -> "Environment Variables" button -> in the system variable section scroll down to the PATH variable, hit "edit" and add C:\Program Files\VirtualBox. After making sure this is the case, in the openbadges repo, run:
-
-    C:\...\Openbadges>"c:\Program Files (x86)\Vagrant\bin\vagrant.bat" up
-
-This will do all the VM building. You may be prompted by the windows firewall and UAC to allow VirtualBox network and disk access: you'll have to allow this, otherwise things won't work. When the VM creation is done, let vagrant discover that it can't actually do SSH on windows:
-
-    C:\...\Openbadges>"c:\Program Files (x86)\Vagrant\bin\vagrant.bat" ssh
-
-This will generate an output similar to the following:
-
-    `vagrant ssh` isn't available on the Windows platform. You are still able
-    to SSH into the virtual machine if you get a Windows SSH client (such as
-    PuTTY). The authentication information is shown below:
-
-    Host: 127.0.0.1
-    Port: 2229
-    Username: vagrant
-    Private key: C:/Users/You/.vagrant.d/insecure_private_key
-
-If you don't already have it installed, get [PuTTY](http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html) or another SSH client and log into 127.0.0.1:2229 with the username "vagrant" and password "vagrant", using the SSH key that vagrant generated in the indicated directory (Connection -> SSH -> Auth -> "browse" button). Putty will expect a .ppk file, so just tell it to show all files (*.*) and select the insecure_private_key file. Connect, and you should get into the Vagrant VM just fine.
-
-Once connected to the VM, you can now start the server using:
-
-    vagrant@lucid32:~$ start-server
-
-and then back in windows you can fire up your favourite browser and connect to the OpenBadges server you now have running on localhost:
-
-    http://localhost:8888
-
-#### A Warning
-:warning: Some developers have been having trouble with vagrant, and don't use it any more. Vagrant support may be out of date.
-
-### The hard way
+### Creating a development environment
 
 1. Setup a MySQL database. Create a database and a user with full privileges on
    that db. For example:
@@ -107,7 +43,7 @@ and then back in windows you can fire up your favourite browser and connect to t
         CREATE DATABASE openbadges;
         GRANT ALL PRIVILEGES ON openbadges.* TO badgemaker@localhost IDENTIFIED BY 'secret';
         CREATE DATABASE test_openbadges;
-        GRANT ALL PRIVILEGES ON test_openbadges.* to badgemaker@localhost IDENTIFIED BY 'secret';
+        GRANT ALL PRIVILEGES ON openbadges_test.* to badgemaker@localhost IDENTIFIED BY 'secret';
 
 2. Copy the `openbadges/lib/environments/local-dist.js` to
    `openbadges/lib/environments/local.js` and edit the configuration to match
@@ -123,14 +59,13 @@ and then back in windows you can fire up your favourite browser and connect to t
         },
 
 3. Install external tools:
-  * [PhantomJS](http://phantomjs.org): We use PhantomJS for running unit tests. On a debian based Linux system you can run `sudo apt-get install phantomjs` to install and run `phantomjs --version` to check it is installed. For other systems you can try [downloading](http://phantomjs.org/download.html) and installing it or [building it from source](http://phantomjs.org/build.html).
+  * [PhantomJS](http://phantomjs.org): We use PhantomJS for running some unit tests. On a debian based Linux system you can run `sudo apt-get install phantomjs` to install and run `phantomjs --version` to check it is installed. For other systems you can try [downloading](http://phantomjs.org/download.html) and installing it or [building it from source](http://phantomjs.org/build.html).
+
 4. Install local dependencies: `npm install`
 
-5. Install submodules: `git submodule update --init`
+5. Run the test suite: `npm test`
 
-6. Run the test suite: `npm test`
-
-7. Start your server: `npm start`
+6. Start your server: `npm start`
 
 No matter which way you choose, you should join the
 [Open Badges Google Group](https://groups.google.com/forum/#!forum/openbadges). If
@@ -157,7 +92,7 @@ migration. You can do this as follows:
    file preixed with a timestamp in the `migrations` directory.
    Something like the following should be displayed:
 
-       [INFO] Created migration at  
+       [INFO] Created migration at
        migrations/20130213205310-add-issuer-column.js
 
 3. Edit the new JS file as per the [node-db-migrate][] instructions.
@@ -171,12 +106,12 @@ And finally, note that during development, `npm start` automatically runs
 run this command yourself whenever you deploy changes that involve a
 schema change.
 
-If you want to write tests for your migration, check out 
+If you want to write tests for your migration, check out
 `test/migration.test.js` for inspiration.
 
   [node-db-migrate]: https://github.com/nearinfinity/node-db-migrate#creating-migrations
 
-### Production 
+### Production
 
 The codebase behaves slightly differently when run in an environment where
 environment variable `NODE_ENV=production`. These differences include:
@@ -186,12 +121,69 @@ environment variable `NODE_ENV=production`. These differences include:
   * run `bin/template-precompile` to generate
 * "Test Site" banner will not show in the UI
 
-## Related Projects
-* https://github.com/lmorchard/django-badger -- Issuing app for Django
-* https://github.com/fedora-infra/tahrir -- A Pyramid (Python) app for issuing your own Open Badges.
-* https://github.com/openmichigan/open_badges -- Drupal module for managing/issuing badges
-* https://github.com/PRX/badges_engine -- Rails Engine for issuing.
+### Heroku
 
-[assertions-latest]: https://github.com/mozilla/openbadges-specification/blob/master/Assertion/latest.md
-[baking=latest]: https://github.com/mozilla/openbadges-specification/blob/master/Badge-Baking/latest.md
-[issuer-api]: https://github.com/mozilla/openbadges/blob/development/docs/apis/issuer-api.md
+Heroku relies upon the [habitat](https://github.com/brianloveswords/habitat) environment variables loader library.  The config for this can be found in [lib/environments/heroku.js](lib/environments/heroku.js).
+
+When configuring your environment variables on heroku, they should be prefixed with the string that is passed to the habitat constructor. For example, if we pass the string "openbadges" to our habitat constructor, like so: `new Habitat("openbadges")`, then in heroku our protocol env var would be "OPENBADGES_PROTOCOL" (with, in this case, a value set to either http or https).
+
+Currently, the heroku env var config looks like so...
+
+
+| ENV VAR                         | VALUE EXAMPLE                                     |
+| ------------------------------- | ------------------------------------------------- |
+| NODE_ENV                        | "heroku"                                          |
+| OPENBADGES_ADMINS               | "['admin@somewhere.com','someone@somewhere.com']" |
+| OPENBADGES_BADGE_PATH           | "static/_badges"                                  |
+| OPENBADGES_DATABASE_DATABASE    | "openbadges"                                      |
+| OPENBADGES_DATABASE_DRIVER      | "mysql"                                           |
+| OPENBADGES_DATABASE_HOST        | "eu-cdbr-west-01.cleardb.com"                     |
+| OPENBADGES_DATABASE_PASSWORD    | "pa55w0rd"                                        |
+| OPENBADGES_DATABASE_USER        | "user"                                            |
+| OPENBADGES_FORCE_HTTPS          | true                                              |
+| OPENBADGES_HOSTNAME             | "backpack-ng.herokuapp.com"                       |
+| OPENBADGES_IDENTITY_PATH        | "/verify"                                         |
+| OPENBADGES_IDENTITY_PROTOCOL    | "https"                                           |
+| OPENBADGES_IDENTITY_SERVER      | "verifier.login.persona.org"                      |
+| OPENBADGES_LESS_COMPRESS        | true                                              |
+| OPENBADGES_LESS_ONCE            | true                                              |
+| OPENBADGES_NEW_RELIC            | false                                             |
+| OPENBADGES_NUNJUCKS_PRECOMPILED | true                                              |
+| OPENBADGES_PROTOCOL             | "https"                                           |
+| OPENBADGES_REMOTE_PORT          | "default"                                         |
+| OPENBADGES_VAR_PATH             | "var"                                             |
+| OPENBADGES_MAILER_SERVICE       | "mailgun"                                         |
+| OPENBADGES_MAILER_USER          | "mailUser"                                        |
+| OPENBADGES_MAILER_PASS          | "mailPa55word"                                    |
+
+* NOTE: The mailer supports this [list of well-known services](https://github.com/nodemailer/nodemailer-wellknown#supported-services)
+
+---
+
+## Open Badges Specifications
+
+To work with the Mozilla Backpack as either an issuer or a displayer, you will be handling Open Badge assertions, structured as JSON data according to the specification. See the [specification](https://github.com/mozilla/openbadges-specification) repo for a detailed overview and [Assertion Information for the Uninitiated](https://github.com/mozilla/openbadges/wiki/Assertion-Information-for-the-Uninitiated) for an introduction.
+
+For more information about Open Badges, check out http://openbadges.org
+
+## I'm an Issuer, how do I use this?
+
+The Backpack includes the following tools for badge issuers:
+
+* [Issuer API](docs/apis/issuer_api.md)
+ * For pushing badges you have awarded the earner to their Mozilla Backpack, giving the earner the ability to approve the push through a lightboxed modal. The API is written in Javascript, and is includable in your project with just a few lines of JS.
+* [Backpack Connect API](docs/apis/backpack_connect.md)
+ * For pushing to the earner's Mozilla Backpack via persistent access, with permission granted by the earner.
+* [Baker API](docs/apis/baking_api.md)
+ * For embedding badge metadata into the badge image (_not required if you use the Issuer API_).
+
+Requirements:
+
+* Webserver capable of serving requests to the general internet.
+* Ability to make a POST request from your server backend and read a JSON response.
+* Email addresses of the users you wish to issue badges.
+* Badge image must be in PNG format.
+
+## I'm a Displayer, how do I use this?
+
+The Backpack includes the [Displayer API](docs/apis/displayer_api.md), via which badge displayers can retrieve earner badges from their Mozilla Backpack. You will only be able to retrieve badges that the earner has chosen to make public. Given the earner email address, you can first use the conversion service to retrieve the earner's Backpack ID, then use that ID to query for public badge groups. Each group contains a list of badges awarded to the earner, inclding the information you need to present the badges within your site, application or other display implementation.

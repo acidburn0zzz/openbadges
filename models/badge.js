@@ -1,5 +1,6 @@
 var mysql = require('../lib/mysql');
 var regex = require('../lib/regex');
+var emailCaser = require('../lib/email-caser');
 var crypto = require('crypto');
 var Base = require('./mysql-base');
 const utils = require('../lib/utils');
@@ -31,27 +32,44 @@ Badge.createHash = function createHash(body) {
   return sha256(JSON.stringify(body));
 };
 
-Badge.confirmRecipient = function confirmRecipient(assertion, email) {
+Badge.confirmRecipient = function confirmRecipient(assertion, emails) {
+
   // can't validate if not given an assertion
   if (!assertion)
     return false;
 
   const recipient = isObject(assertion.recipient)
     ? assertion.recipient.identity
-    : assertion.recipient
+    : assertion.recipient;
   const salt = isObject(assertion.recipient)
     ? assertion.recipient.salt || ''
-    : assertion.salt || ''
+    : assertion.salt || '';
 
-  if (!recipient || !email)
+  const emailsLength = emails.length;
+
+  if (!recipient || !emails)
     return false;
 
   if (typeof recipient !== 'string')
     return false
 
-  // if it's an email address, do a straight comparison
-  if (/@/.test(recipient))
-    return recipient === email;
+  // if it's an email address, do a straight comparison on each email associated to the account
+  if (/@/.test(recipient)) {
+
+    for (var email = 0; email < emailsLength; email++) {
+
+      // if we find a matching recipient, then return the actual email address
+      if (recipient.toLowerCase() === emails[email].toLowerCase()) {
+        return emails[email];
+      }
+
+      // if we didn't find a matching recipient on the last iteration of the loop, then return false
+      if ((email + 1) == emailsLength) {
+        return false;
+      }
+
+    }
+  }
 
   // if it's not an email address, it must have an alg and dollar sign.
   if (!(recipient.match(/\w+(\d+)?\$.+/)))
@@ -60,13 +78,6 @@ Badge.confirmRecipient = function confirmRecipient(assertion, email) {
   const parts = recipient.split('$');
   const algorithm = parts[0];
   const expect = parts[1];
-  var hasher;
-  try {
-    hasher = crypto.createHash(algorithm);
-  } catch(e) {
-    // #TODO: should probably actually throw an error here.
-    return false;
-  }
 
   // if there are more than 2 parts, it's an algorithm with options
   // #TODO: support algorithms with options, throw instead of just
@@ -74,8 +85,39 @@ Badge.confirmRecipient = function confirmRecipient(assertion, email) {
   if (parts.length !== 2)
     return false;
 
-  const value = hasher.update(email + salt).digest('hex');
-  return value.toLowerCase() === expect.toLowerCase();
+  for (var email = 0; email < emailsLength; email++) {
+
+    var potentialEmailVariations = emailCaser.variations(emails[email]);
+    var potentialEmailVariationsLength = potentialEmailVariations.length;
+
+    for (var emailVariation = 0; emailVariation < potentialEmailVariationsLength; emailVariation++) {
+
+      // crypto objects are not re-usable, so we must do this on every iteration
+      var hasher;
+      try {
+        hasher = crypto.createHash(algorithm);
+      } catch(e) {
+        // #TODO: should probably actually throw an error here.
+        return false;
+      }
+
+      var hashedEmailVariation = hasher.update(potentialEmailVariations[emailVariation] + salt).digest('hex');
+
+      // if we find a matching hashed email variation, then return the actual email address
+      if (hashedEmailVariation.toLowerCase() == expect.toLowerCase()) {
+        return emails[email];
+      }
+
+      // if we didn't find a matching recipient on the last iteration of the loop, then return false
+      if (
+          ((email + 1) == emailsLength)
+          && ((emailVariation + 1) == potentialEmailVariationsLength)
+      ) {
+        return false;
+      }
+
+    }
+  }
 };
 
 Badge.prototype.share = function share(callback) {
@@ -87,8 +129,8 @@ Badge.prototype.share = function share(callback) {
   this.save(callback);
 };
 
-Badge.prototype.confirmRecipient = function confirmRecipient(email) {
-  return Badge.confirmRecipient(this.get('body'), email);
+Badge.prototype.confirmRecipient = function confirmRecipient(emails) {
+  return Badge.confirmRecipient(this.get('body'), emails);
 };
 
 
@@ -136,7 +178,7 @@ Badge.prepare = {
       return JSON.parse(value);
     },
     imageUrl: function (value, attr) {
-      return utils.fullUrl('/images/badge/' + attr['body_hash'] + '.png');
+      return utils.fullUrl('/images/badge/' + attr['body_hash'] + attr['image_path'].slice(-4));
     },
   }
 };

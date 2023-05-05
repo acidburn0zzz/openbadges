@@ -27,7 +27,15 @@ Base.apply = function apply(Model, table) {
     var keys = Object.keys(criteria);
     var firstKey = keys[0];
     var values = keys.map(function (key) { return criteria[key] });
-    var qstring = 'SELECT * FROM `' + table + '` WHERE ' + keys.map(function (key) { return (key + ' = ?')}).join(' AND ');
+
+    var qstring = 'SELECT * FROM `' + table + '` WHERE ' + 
+      keys.map(function (key) {
+        // given that at this stage, there is only one field that requires >=
+        // we're going to be quick and dirty with its application
+        // in future, we could be a bit cleverer about the way we parse incoming parameters
+        // but for now, this will work
+        return (key !== 'reset_password_expires') ? (key + ' = ?') : (key + ' >= ?')
+      }).join(' AND ');
 
     function parseResults(err, results) {
       if (err) callback(err);
@@ -58,6 +66,13 @@ Base.apply = function apply(Model, table) {
     var qstring = 'DELETE FROM `' + table + '` WHERE ' + keys.map(function (key) { return (key + ' = ?')}).join(' AND ');
 
     client.query(qstring, values, function(err) { callback(err); });
+  };
+
+  Model.findAndDestroyIn = function(criteria, callback) {
+    // this is safe for now, as we're not dealing with user supplied data, when using prepared statements 
+    // this has been causing issues, so this is a temp solution
+    var qstring = 'DELETE FROM `' + table + '` WHERE `' + criteria.key + '` IN (' + criteria.values.join(',') + ')';
+    client.query(qstring, [], function(err) { callback(err); });
   };
 
   Model.prototype = new Base();
